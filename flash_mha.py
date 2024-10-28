@@ -45,19 +45,17 @@ class FlashAttention(nn.Module):
             K_block_j, V_block_j = K_blocks[j], V_blocks[j]
             if mask:
                 mask_block_j = mask_blocks[..., j]
-
             for i in range(num_q_blocks):
                 print(f"i: {i} j: {j}")
                 Q_block_i = Q_blocks[i]
-
                 if j == 0:
                     O_block_i = rearrange(O_blocks[i], "b l n d -> b n l d")
                     m_i = rearrange(m_blocks[i], "b l n -> b n l 1")
                     l_i = rearrange(l_blocks[i], "b l n -> b n l 1")
                 else:
                     O_block_i = O_blocks[i]
-                    m_i = m_blocks[i].unsqueeze(-1)
-                    l_i = l_blocks[i].unsqueeze(-1)
+                    m_i = m_blocks[i]
+                    l_i = l_blocks[i]
 
                 S_ij = (
                     einsum(
@@ -73,7 +71,7 @@ class FlashAttention(nn.Module):
 
                 m_ij = torch.max(S_ij, dim=-1, keepdim=True).values
                 P_ij = torch.exp(S_ij - m_ij)
-                l_ij = P_ij.sum(-1, keepdim=True)
+                l_ij = P_ij.sum(-1, keepdim=True) + common.EPS
                 m_i_new = torch.maximum(m_i, m_ij)
                 l_i_new = (
                     torch.exp(m_i - m_i_new) * l_i + torch.exp(m_ij - m_i_new) * l_ij
@@ -85,8 +83,8 @@ class FlashAttention(nn.Module):
                 )
                 O_blocks[i] = (l_i * torch.exp(m_i - m_i_new) * O_block_i + 
                     torch.exp(m_ij - m_i_new) * O_block_i_new) / l_i_new
-                l_blocks[i] = l_i_new.squeeze(-1)
-                m_blocks[i] = m_i_new.squeeze(-1)
+                l_blocks[i] = l_i_new
+                m_blocks[i] = m_i_new
         attn_output = rearrange(torch.cat(O_blocks, dim=2), "b n l d -> b l n d")
         return attn_output
 
