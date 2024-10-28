@@ -8,7 +8,8 @@ I would refer to the original paper for the details of the algorithm. This imple
 is based on the Algorithm 1 in the paper:
 
 ```
-Dao, Tri, Dan Fu, Stefano Ermon, Atri Rudra, and Christopher Ré. "Flashattention: Fast and memory-efficient exact attention with io-awareness." Advances in Neural Information Processing Systems 35 (2022): 16344-16359.```
+Dao, Tri, Dan Fu, Stefano Ermon, Atri Rudra, and Christopher Ré. "Flashattention: Fast and memory-efficient exact attention with io-awareness." Advances in Neural Information Processing Systems 35 (2022): 16344-16359.
+```
 
 The original implementation requires CUDA kernels for fusing operations and moving data
 between HBM to SRAM whereas this implementation does not consider any of these.
