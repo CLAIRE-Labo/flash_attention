@@ -27,16 +27,16 @@ class FlashAttention(nn.Module):
         KV_block_size = min(self.block_size, kv_seqlen)
 
         Q_blocks = torch.split(qkv.Q, Q_block_size, dim=1)
+        O_blocks = list(torch.split(O, Q_block_size, dim=1))
+        l_blocks = list(torch.split(l, Q_block_size, dim=1))
+        m_blocks = list(torch.split(m, Q_block_size, dim=1))
+
         K_blocks = torch.split(qkv.K, KV_block_size, dim=1)
         V_blocks = torch.split(qkv.V, KV_block_size, dim=1)
         if mask:
             mask_blocks = torch.split(mask, KV_block_size, dim=1)
 
-        scale = 1.0 / math.sqrt(qkv.Q.shape[-1])
-        O_blocks = list(torch.split(O, Q_block_size, dim=1))
-        l_blocks = list(torch.split(l, Q_block_size, dim=1))
-        m_blocks = list(torch.split(m, Q_block_size, dim=1))
-        
+        scale = 1.0 / math.sqrt(qkv.Q.shape[-1])        
         num_q_blocks = len(Q_blocks)
         num_kv_blocks = len(K_blocks)
         
@@ -54,6 +54,10 @@ class FlashAttention(nn.Module):
                     O_block_i = rearrange(O_blocks[i], "b l n d -> b n l d")
                     m_i = rearrange(m_blocks[i], "b l n -> b n l 1")
                     l_i = rearrange(l_blocks[i], "b l n -> b n l 1")
+                else:
+                    O_block_i = O_blocks[i]
+                    m_i = m_blocks[i].unsqueeze(-1)
+                    l_i = l_blocks[i].unsqueeze(-1)
 
                 S_ij = (
                     einsum(
