@@ -1,3 +1,4 @@
+# A simple multihead attention implementation
 import math
 from einops import einsum
 import logging

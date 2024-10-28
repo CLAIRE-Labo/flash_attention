@@ -1,3 +1,4 @@
+# A basic multihead flash attention implementation
 import math
 from einops import einsum, rearrange
 import logging
@@ -44,14 +45,11 @@ class FlashAttention(nn.Module):
         scale = 1.0 / math.sqrt(qkv.Q.shape[-1])        
         num_q_blocks = len(Q_blocks)
         num_kv_blocks = len(K_blocks)
-        
-        # print(f"num_q_blocks: {num_q_blocks}, num_kv_blocks: {num_kv_blocks}")
         for j in range(num_kv_blocks):
             K_block_j, V_block_j = K_blocks[j], V_blocks[j]
             if mask:
                 mask_block_j = mask_blocks[..., j]
             for i in range(num_q_blocks):
-                # print(f"i: {i} j: {j}")
                 Q_block_i = Q_blocks[i]
                 if j == 0:
                     O_block_i = rearrange(O_blocks[i], "b l n d -> b n l d")
@@ -70,10 +68,8 @@ class FlashAttention(nn.Module):
                     )
                     * scale
                 )
-
                 if mask:
                     S_ij = S_ij.masked_fill(mask_block_j != 0, S_ij, common.MASKOUT_VAL)
-
                 m_ij = torch.max(S_ij, dim=-1, keepdim=True).values
                 P_ij = torch.exp(S_ij - m_ij)
                 l_ij = P_ij.sum(-1, keepdim=True) + common.EPS

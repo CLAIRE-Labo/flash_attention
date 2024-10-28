@@ -1,4 +1,5 @@
-# flash_attention
+# ⚡ Experimental Flash Attention implementation ⚡
+
 A basic pure pytorch implementation of flash attention.
 
 The codebase is mainly written for educational purposes not meant to be used for production
