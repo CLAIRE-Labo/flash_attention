@@ -19,7 +19,7 @@ parser.add_argument('--batch_size', default=2, required=False, type=int)
 parser.add_argument('--seq_len', default=8192, required=False, type=int)
 parser.add_argument('--d_model', default=1024, required=False, type=int)
 parser.add_argument('--num_heads', default=16, required=False, type=int)
-parser.add_argument('--block_size', default=1024, required=False, type=int)
+parser.add_argument('--block_size', default=512, required=False, type=int)
 parser.add_argument('--profile', default=True, required=False, type=bool)
 args = parser.parse_args()
 
@@ -35,6 +35,7 @@ def time_attention(data: torch.tensor = None,
     # Warmup:
     for _ in range(10):
         attention_module(data)
+    logging.warning(f"Memory allocated: {torch.cuda.memory_allocated()}")
     # The real timing starts now:
     times = []
     for _ in range(num_trials):
@@ -44,7 +45,8 @@ def time_attention(data: torch.tensor = None,
         duration = (end - start) / ms_denom
         times.append(duration)
     logging.warning(f"Average time: {np.mean(times)} ms, Std time: {np.std(times)}.")
-
+    attention_module.cpu()
+    torch.cuda.empty_cache()
 
 def run_profile(data: torch.tensor = None, 
                 num_trials: int = 10,
@@ -64,26 +66,29 @@ def run_profile(data: torch.tensor = None,
             for _ in range(num_trials):
                 attention_module(data)
     logging.warning(prof.key_averages().table(sort_by="cuda_memory_usage", row_limit=10))
+    logging.warning(f"Memory allocated: {torch.cuda.memory_allocated()}")
+    attention_module.cpu()
+    torch.cuda.empty_cache()
 
 def run_benchmarks():
-    data = torch.randn((args.batch_size, args.seq_len, args.d_model))
+    data = 0.01 * torch.randn((args.batch_size, args.seq_len, args.d_model))
     mha_module = MultiHeadAttention(d_model=args.d_model, num_heads=args.num_heads)
     proj = mha_module.proj
     out_proj = mha_module.out_proj
     flash_mha_module = MultiheadFlashAttention(d_model=args.d_model, num_heads=args.num_heads, 
                                                block_size=args.block_size, proj=proj, out_proj=out_proj)
-    logging.warning("Benchmarking flash multihead attention...")
+    logging.warning("**Benchmarking flash multihead attention...**")
     time_attention(data, attention_module=flash_mha_module)
     logging.warning("========")
-    logging.warning("Benchmarking the regular multihead attention...")
+    logging.warning("**Benchmarking the regular multihead attention...")
     time_attention(data, attention_module=mha_module)
     logging.warning("Finished timing!")
-    logging.warning("Profiling flash multihead attention...")
+    logging.warning("**Profiling flash multihead attention...**")
     run_profile(data, num_trials=20, attention_module=flash_mha_module)
     logging.warning("========")
-    logging.warning("Profiling flash multihead attention...")
+    logging.warning("**Profiling flash multihead attention...**")
     run_profile(data, num_trials=20, attention_module=mha_module)
-    logging.warning("Finished profiling!")
+    logging.warning("**Finished profiling!**")
 
 
 if __name__ == "__main__":
