@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-
 import torch
 
 if torch.cuda.is_available():
@@ -13,7 +12,7 @@ else:
 
 
 MASKOUT_VAL = -float("inf")
-EPS = 1e-9
+EPS = 1e-10
 
 
 @dataclass

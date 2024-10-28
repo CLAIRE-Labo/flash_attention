@@ -15,8 +15,8 @@ if torch.cuda.is_available():
     os.environ['USE_KINETO'] = "1"
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--batch_size', default=8, required=False, type=int)
-parser.add_argument('--seq_len', default=4096, required=False, type=int)
+parser.add_argument('--batch_size', default=2, required=False, type=int)
+parser.add_argument('--seq_len', default=8192, required=False, type=int)
 parser.add_argument('--d_model', default=1024, required=False, type=int)
 parser.add_argument('--num_heads', default=16, required=False, type=int)
 parser.add_argument('--block_size', default=1024, required=False, type=int)
@@ -72,11 +72,9 @@ def run_benchmarks():
     out_proj = mha_module.out_proj
     flash_mha_module = MultiheadFlashAttention(d_model=args.d_model, num_heads=args.num_heads, 
                                                block_size=args.block_size, proj=proj, out_proj=out_proj)
-    
     logging.warning("Benchmarking flash multihead attention...")
     time_attention(data, attention_module=flash_mha_module)
     logging.warning("========")
-
     logging.warning("Benchmarking the regular multihead attention...")
     time_attention(data, attention_module=mha_module)
     logging.warning("Finished timing!")

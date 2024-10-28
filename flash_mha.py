@@ -13,14 +13,19 @@ class FlashAttention(nn.Module):
     def __init__(self, block_size=64):
         super().__init__()
         self.block_size = block_size
+        self._initialized = False
+    
+    def _init_vars(self, size: torch.tensor, device: str):
+        O = torch.zeros(size, requires_grad=True)
+        l = torch.zeros(size[:-1])
+        m = torch.ones(size[:-1]) * common.MASKOUT_VAL
+        self.O, self.l, self.m = map(lambda x: x.to(device), (O, l, m))
+        self._initialized = True 
 
     def forward(self, qkv: common.QKV, mask=None):
-        O = torch.zeros_like(qkv.Q, requires_grad=True)
-        l = torch.zeros(qkv.Q.shape[:-1])
-        m = torch.ones(qkv.Q.shape[:-1]) * common.MASKOUT_VAL
-        device = qkv.Q.device
-
-        O, l, m = map(lambda x: x.to(device), (O, l, m))
+        if not self._initialized:
+            self._init_vars(qkv.Q.shape, qkv.Q.device)
+        O, l, m = self.O, self.l, self.m 
         q_seqlen = qkv.Q.shape[1]
         kv_seqlen = qkv.K.shape[1]
         Q_block_size = min(self.block_size, q_seqlen)
@@ -40,13 +45,13 @@ class FlashAttention(nn.Module):
         num_q_blocks = len(Q_blocks)
         num_kv_blocks = len(K_blocks)
         
-        print(f"num_q_blocks: {num_q_blocks}, num_kv_blocks: {num_kv_blocks}")
+        # print(f"num_q_blocks: {num_q_blocks}, num_kv_blocks: {num_kv_blocks}")
         for j in range(num_kv_blocks):
             K_block_j, V_block_j = K_blocks[j], V_blocks[j]
             if mask:
                 mask_block_j = mask_blocks[..., j]
             for i in range(num_q_blocks):
-                print(f"i: {i} j: {j}")
+                # print(f"i: {i} j: {j}")
                 Q_block_i = Q_blocks[i]
                 if j == 0:
                     O_block_i = rearrange(O_blocks[i], "b l n d -> b n l d")
